@@ -1,0 +1,5 @@
+[
+  {"id":"synthetic-landmark","latitude":0,"longitude":0,"cluePoor":false},
+  {"id":"synthetic-ordinary","latitude":40,"longitude":-74,"cluePoor":true},
+  {"id":"synthetic-coarse","latitude":10,"longitude":10,"cluePoor":true}
+]

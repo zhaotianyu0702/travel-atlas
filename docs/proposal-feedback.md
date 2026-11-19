@@ -1,0 +1,12 @@
+# Proposal feedback and acceptance
+
+Source: [John](https://github.com/onexi/ps06/blob/2155fe8730dd0c8200d5136e19f2f06a2bde0787/zhaotianyu0702/feedback_John.md) and [Abel](https://github.com/onexi/ps06/blob/1016aee72d4ad54cc25d5c826d4d054036fe7a2c/zhaotianyu0702/feedback_abel.md). The overlapping suggestions are grouped below.
+
+| Item | Before this revision | Current implementation or evidence |
+| --- | --- | --- |
+| Core scope and risk | Import, stored trips, review and recaps existed, but downloads presented all formats together. | HTML is the primary download and is tested from an imported photo and saved trip. Video is optional. The README defines the core path and main risks. |
+| Provenance and review | Metadata and AI candidates were separate; confirmation already required an explicit save. | Preserved. Coarse/weak candidates carry no coordinates; an unresolved record cannot put an AI pin onto the map. |
+| Privacy | Access was owner-only and AI used thumbnails. The payload and what a shared recap exposes were not explicit in these flows. | Analysis explains its payload before it starts; the HTML export uses saved text and display images, excludes hidden place labels and capture metadata, and explains file visibility. |
+| Missing EXIF, time zones and files | Basic import and EXIF checks existed. Browser decode could stop the whole batch. | Bad files are reported individually. Tests cover missing EXIF, mixed valid/invalid files, cross-midnight offsets, unknown offsets and invalid dates. |
+| Ordinary photos without reliable clues | The prompt allowed unknowns; old prototype tests showed that a generic meal could still get a country from surrounding images. | The new prompt requires explicit abstention without corroborating evidence. The validator removes guesses flagged with insufficient evidence and has a regression test for a generic interior. This tests the rule, not how often the model identifies an ambiguous scene. |
+| Held-out location error and task time | Local prototype edge-case pilots tested a small sample with proxy EXIF references. They were prompt-development cases, not a held-out comparison or a paired human timing study. | A small real-photo pilot measured masked-GPS error and agent-operated correction time; its private materials are not included here. This is not a human usability study. |

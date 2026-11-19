@@ -1,0 +1,5 @@
+[
+  {"id":"synthetic-landmark","status":"claim","latitude":0,"longitude":0.01,"placeName":"","country":""},
+  {"id":"synthetic-ordinary","status":"abstain","latitude":null,"longitude":null,"placeName":"","country":""},
+  {"id":"synthetic-coarse","status":"claim","latitude":null,"longitude":null,"placeName":"","country":"Example"}
+]

@@ -1,0 +1,5 @@
+[
+  {"id":"synthetic-landmark","manual":{"inspectSeconds":5,"researchSeconds":20,"editSeconds":10},"ai":{"inspectSeconds":5,"requestWaitSeconds":10,"reviewSeconds":8,"editSeconds":5}},
+  {"id":"synthetic-ordinary","manual":{"inspectSeconds":5,"researchSeconds":30,"editSeconds":0},"ai":{"inspectSeconds":5,"requestWaitSeconds":10,"reviewSeconds":10,"editSeconds":0}},
+  {"id":"synthetic-coarse","manual":{"inspectSeconds":5,"researchSeconds":10,"editSeconds":5},"ai":{"inspectSeconds":5,"requestWaitSeconds":10,"reviewSeconds":10,"editSeconds":5}}
+]

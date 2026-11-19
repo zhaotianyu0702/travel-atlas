@@ -1,0 +1,4 @@
+MapLibre GL JS worker, version 6.16.0, copied from maplibre-gl/dist/maplibre-gl-worker.mjs.
+MapLibre GL JS is licensed under the BSD 3-Clause License:
+https://github.com/maplibre/maplibre-gl-js/blob/v6.16.0/LICENSE.txt
+When upgrading maplibre-gl, copy the matching worker from the installed package to this path; the runtime and worker versions must match. The worker is served from the same origin because the Next.js bundle uses an external node_modules symlink.
