@@ -1,16 +1,36 @@
 import { env, waitUntil } from 'cloudflare:workers';
 import { defaultAccountId, mutateStore, readStore, storage } from './cloud-store';
 import { imageDataUrl } from './location-provider';
-import { highlightBatches } from './trip-presentation';
+import { highlightBatches, spread, HIGHLIGHT_BATCH, HIGHLIGHT_POOL_LIMIT } from './trip-presentation';
 import type { HighlightJob, Photo, Store, StoredHighlightJob } from './types';
 
 const schema={type:'object',additionalProperties:false,required:['selectedPhotoIds'],properties:{selectedPhotoIds:{type:'array',items:{type:'string'}}}};
 type ResponseBody={id?:string;status?:string;output?:{content?:{type?:string;text?:string}[]}[]};
 const settings=()=>env as unknown as {OPENAI_API_KEY?:string;ATLAS_MODEL?:string};
 const jobs=(s:Store)=>s.highlightJobs??=[];
-const shape=({id,tripId,status,analyzedCount,totalCount,failedBatches}:StoredHighlightJob):HighlightJob=>({id,tripId,status,analyzedCount,totalCount,failedBatches});
+const shape=({id,tripId,status,analyzedCount,totalCount,failedBatches,createdAt,finishedAt}:StoredHighlightJob):HighlightJob=>({id,tripId,status,analyzedCount,totalCount,failedBatches,...(status!=='running'&&finishedAt!==undefined?{elapsedMs:Math.max(0,finishedAt-createdAt)}:{})});
 const active=(s:Store,id:string)=>s.photos.filter(p=>p.accountId===defaultAccountId&&p.tripId===id&&!p.deletedAt);
-const source=(photos:Photo[])=>JSON.stringify(photos.map(p=>[p.id,p.sha256,p.capturedAt]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));
+// Hash the full input transiently. Only its fixed-size digest is persisted.
+const photoSignatures=(photos:Photo[]):[string,string][]=>photos.map((p):[string,string]=>[p.id,JSON.stringify([p.sha256,p.thumbnailPath,p.createdAt,p.capturedAt,p.timeSource,p.timeMetadata,p.latitude,p.longitude,p.placeName,p.country,p.locationSource,p.metadata])]).sort((a,b)=>a[0].localeCompare(b[0]));
+const tripSignature=(trip:Store['trips'][number])=>JSON.stringify([trip.title,trip.startDate,trip.endDate,trip.notes]);
+const source=(photos:Photo[],trip:Store['trips'][number])=>JSON.stringify([tripSignature(trip),photoSignatures(photos)]);
+// Reuse whole successful comparisons only: splitting a batch would change the
+// context in which its photos were selected. Reserve capacity for new photos.
+export function planHighlightBatches(photos:Photo[], old:StoredHighlightJob|undefined, model:string, priorMatches:boolean, added:Photo[]) {
+  const fresh=()=>highlightBatches(photos).map(batch=>({photoIds:batch.map(p=>p.id),status:'queued' as const}));
+  if(!old||old.model!==model||old.pipeline!=='highlights-3'||!priorMatches)return fresh();
+  // On retry, retain successes and resubmit only failed or unfinished batches.
+  if(!added.length)return old.batches.map(b=>b.status==='succeeded'?{photoIds:[...b.photoIds],status:'succeeded' as const,selected:[...(b.selected??[])]}:{photoIds:[...b.photoIds],status:'queued' as const});
+  if(!old.batches.some(b=>b.status==='succeeded'))return fresh();
+  const maxBatches=HIGHLIGHT_POOL_LIMIT/HIGHLIGHT_BATCH;
+  const retained=spread(old.batches,Math.min(old.batches.length,maxBatches-1));
+  const room=maxBatches-retained.length;
+  const orderedNew=highlightBatches(added).flat();
+  const newPool=spread(orderedNew,room*HIGHLIGHT_BATCH);
+  const result=retained.map(b=>b.status==='succeeded'?{photoIds:[...b.photoIds],status:'succeeded' as const,selected:[...(b.selected??[])]}:{photoIds:[...b.photoIds],status:'queued' as const});
+  for(let i=0;i<newPool.length;i+=HIGHLIGHT_BATCH)result.push({photoIds:newPool.slice(i,i+HIGHLIGHT_BATCH).map(p=>p.id),status:'queued'});
+  return result;
+}
 const sha=async (value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
 const waiting=(r:ResponseBody)=>['queued','in_progress'].includes(r.status??'');
 const MAX_ACTIVE_BATCHES=3;
@@ -29,6 +49,12 @@ export function validateHighlightSelection(response:ResponseBody,photoIds:string
   return ids as string[];
 }
 async function mark(id:string,index:number,status:'succeeded'|'failed',selected?:string[]) {
+  // Compute outside the synchronous transaction, then compare the full source
+  // inside it so a concurrent edit cannot publish an outdated selection.
+  const snapshot=await readStore(), snapshotJob=jobs(snapshot).find(j=>j.id===id);
+  const snapshotTrip=snapshotJob&&snapshot.trips.find(t=>t.id===snapshotJob.tripId&&t.accountId===defaultAccountId);
+  const fingerprint=snapshotTrip?source(active(snapshot,snapshotTrip.id),snapshotTrip):undefined;
+  const key=fingerprint&&snapshotJob?await sha(snapshotJob.model+'|highlights-3|'+fingerprint):undefined;
   await mutateStore(s=>{
     const j=jobs(s).find(v=>v.id===id);
     if(!j||j.status!=='running')return;
@@ -39,7 +65,9 @@ async function mark(id:string,index:number,status:'succeeded'|'failed',selected?
     j.failedBatches=j.batches.filter(v=>v.status==='failed').length;
     j.analyzedCount=j.batches.filter(v=>v.status==='succeeded').reduce((n,v)=>n+v.photoIds.length,0);
     j.status=trip&&j.analyzedCount>0?'succeeded':'failed';
+    j.finishedAt=Date.now();
     if(j.status==='failed'||!trip||j.superseded)return;
+    if(j.pipeline!=='highlights-3'||j.sourceKey!==key||source(active(s,trip.id),trip)!==fingerprint){j.status='failed';return;}
     const valid=new Set(active(s,trip.id).map(p=>p.id));
     trip.highlightPhotoIds=[...new Set(j.batches.flatMap(v=>v.selected??[]))].filter(photoId=>valid.has(photoId));
     trip.highlightAnalyzedCount=j.analyzedCount;
@@ -128,15 +156,30 @@ export async function highlightsRoute(req:Request,path:string[]) {
   if(!b||typeof b.tripId!=='string')throw new Error('Choose a trip.');
   const tripId=b.tripId, {ATLAS_MODEL:model, OPENAI_API_KEY:key}=settings();
   if(!key||!model)throw new Error('Highlights are not configured.');
-  const snapshot=await readStore(), photos=active(snapshot,tripId), batches=highlightBatches(photos), fingerprint=source(photos);
-  if(!snapshot.trips.some(t=>t.id===tripId&&t.accountId===defaultAccountId))throw new Error('Trip not found.');
+  const snapshot=await readStore(), photos=active(snapshot,tripId), trip=snapshot.trips.find(t=>t.id===tripId&&t.accountId===defaultAccountId);
+  if(!trip)throw new Error('Trip not found.');
+  const batches=highlightBatches(photos), fingerprint=source(photos,trip);
   if(!batches.length)throw new Error('Add photos before picking highlights.');
-  const sourceKey=await sha(model+'|highlights-1|'+fingerprint);
-  const next:StoredHighlightJob={id:crypto.randomUUID(),tripId,sourceKey,status:'running',createdAt:Date.now(),model,totalCount:photos.length,analyzedCount:0,failedBatches:0,batches:batches.map(batch=>({photoIds:batch.map(p=>p.id),status:'queued'}))};
+  const sourceKey=await sha(model+'|highlights-3|'+fingerprint);
+  // A cutoff proves a pure append only if every current creation time is valid,
+  // the old prefix has the same count, and its full digest matches the old job.
+  const timestamps=photos.map(p=>Date.parse(p.createdAt));
+  const cutoff=timestamps.every(Number.isFinite)?timestamps.reduce((max,n)=>Math.max(max,n),-Infinity):undefined;
+  const prior=jobs(snapshot).find(j=>j.tripId===tripId&&!j.superseded);
+  let priorMatches=prior?.sourceKey===sourceKey, added:Photo[]=[];
+  if(!priorMatches&&prior?.pipeline==='highlights-3'&&prior.model===model&&prior.sourceCutoff!==undefined&&timestamps.every(Number.isFinite)) {
+    const prefix=photos.filter(p=>Date.parse(p.createdAt)<=prior.sourceCutoff!);
+    added=photos.filter(p=>Date.parse(p.createdAt)>prior.sourceCutoff!);
+    priorMatches=prefix.length===prior.totalCount&&added.length>0&&await sha(model+'|highlights-3|'+source(prefix,trip))===prior.sourceKey;
+  }
+  const next:StoredHighlightJob={id:crypto.randomUUID(),tripId,sourceKey,status:'running',createdAt:Date.now(),model,totalCount:photos.length,analyzedCount:0,failedBatches:0,batches:[],sourceCutoff:cutoff,pipeline:'highlights-3'};
   const claimed=await mutateStore(s=>{
     const old=jobs(s).find(j=>j.tripId===tripId&&!j.superseded);
+    const currentTrip=s.trips.find(t=>t.id===tripId&&t.accountId===defaultAccountId);
+    if(!currentTrip||source(active(s,tripId),currentTrip)!==fingerprint)throw new Error('Photos changed. Try again.');
     if(old&&old.sourceKey===sourceKey&&(old.status==='running'||(old.status==='succeeded'&&!old.failedBatches)))return {job:old,newJob:false};
-    if(!s.trips.some(t=>t.id===tripId&&t.accountId===defaultAccountId)||source(active(s,tripId))!==fingerprint)throw new Error('Photos changed. Try again.');
+    next.batches=planHighlightBatches(photos,old,model,!!priorMatches&&old?.sourceKey===prior?.sourceKey,added);
+    next.analyzedCount=next.batches.filter(b=>b.status==='succeeded').reduce((n,b)=>n+b.photoIds.length,0);
     if(old?.status==='running') {
       old.superseded=true;
       for(const b of old.batches)if(b.status==='queued')b.status='failed';

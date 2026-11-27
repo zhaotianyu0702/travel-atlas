@@ -1,0 +1,28 @@
+import type { RecapMusic } from './recap-music-library';
+
+export const LAND_MUSIC: RecapMusic[] = [
+  { id: "land-desert-theme", title: "Desert Theme", mood: "Warm & adventurous", profiles: ["desert-drive", "journey"], styles: ["cinematic"],
+    src: "/recap-audio/land-desert-theme.m4a", beatSeconds: 0.7595, beatOffsetSeconds: 0.525, previewSeconds: 12 },
+  { id: "land-desert-settlement", title: "Desert Settlement", mood: "Reflective guitar", profiles: ["desert-drive", "journey"], styles: ["cinematic"],
+    src: "/recap-audio/land-desert-settlement.m4a", beatSeconds: 0.6866, beatOffsetSeconds: 0.084, previewSeconds: 12 },
+  { id: "land-caravan", title: "Desert Theme (Caravan)", mood: "Mysterious & rhythmic", profiles: ["desert-drive", "journey"], styles: ["minimal"],
+    src: "/recap-audio/land-caravan.m4a", beatSeconds: 0.4536, beatOffsetSeconds: 0.385, previewSeconds: 12 },
+  { id: "land-sunset-plains", title: "Sunset Plains", mood: "Open & peaceful", profiles: ["nature", "quiet"], styles: ["cinematic"],
+    src: "/recap-audio/land-sunset-plains.m4a", beatSeconds: 0.4408, beatOffsetSeconds: 0.179, previewSeconds: 12 },
+  { id: "land-jungle-simple", title: "Jungle Simple Style 1", mood: "Playful & tropical", profiles: ["nature", "journey"], styles: ["minimal"],
+    src: "/recap-audio/land-jungle-simple.m4a", beatSeconds: 0.5443, beatOffsetSeconds: 0.117, previewSeconds: 12 },
+  { id: "land-peaceful-forest", title: "Peaceful Forest", mood: "Gentle & serene", profiles: ["nature", "quiet"], styles: ["minimal"],
+    src: "/recap-audio/land-peaceful-forest.m4a", beatSeconds: 0.4648, beatOffsetSeconds: 0.076, previewSeconds: 12 },
+  { id: "land-brave-journey", title: "Brave Journey", mood: "Reflective & hopeful", profiles: ["journey", "nature"], styles: ["cinematic"],
+    src: "/recap-audio/land-brave-journey.m4a", beatSeconds: 0.5936, beatOffsetSeconds: 0.554, previewSeconds: 12 },
+  { id: "land-new-day", title: "A New Day", mood: "Bright & adventurous", profiles: ["journey", "people"], styles: ["dynamic"],
+    src: "/recap-audio/land-new-day.m4a", beatSeconds: 0.4638, beatOffsetSeconds: 0.085, previewSeconds: 12 },
+  { id: "land-adventure-time", title: "Adventure Time", mood: "Upbeat & playful", profiles: ["journey", "people"], styles: ["dynamic"],
+    src: "/recap-audio/land-adventure-time.m4a", beatSeconds: 0.5, beatOffsetSeconds: 0, previewSeconds: 12 },
+  { id: "land-lake-aria", title: "Lake Aria", mood: "Still & reflective", profiles: ["nature", "quiet"], styles: ["minimal"],
+    src: "/recap-audio/land-lake-aria.m4a", beatSeconds: 0.4653, beatOffsetSeconds: 0.154, previewSeconds: 12 },
+  { id: "land-sun-cave-village", title: "Sun Cave Village", mood: "Warm & exploratory", profiles: ["journey", "nature"], styles: ["cinematic"],
+    src: "/recap-audio/land-sun-cave-village.m4a", beatSeconds: 0.6074, beatOffsetSeconds: 0.435, previewSeconds: 12 },
+  { id: "land-forgotten-shrine", title: "Forgotten Shrine in the Forest", mood: "Quiet & mysterious", profiles: ["nature", "journey"], styles: ["cinematic"],
+    src: "/recap-audio/land-forgotten-shrine.m4a", beatSeconds: 0.488, beatOffsetSeconds: 0.47, previewSeconds: 12 },
+];

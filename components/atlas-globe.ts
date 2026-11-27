@@ -1,6 +1,7 @@
 import {
   BufferAttribute,
   BufferGeometry,
+  AmbientLight,
   Color,
   DirectionalLight,
   Group,
@@ -153,13 +154,10 @@ export function createGlobeRenderer(canvas: HTMLCanvasElement, world: FeatureCol
   const globe = new Group();
   scene.add(globe);
 
-  const ambient = new DirectionalLight('#fff9ef', 1.95);
-  ambient.position.set(-0.65, 0.8, 1.4);
-  scene.add(ambient);
-  const fill = new DirectionalLight('#d5e7e2', 0.65);
-  fill.position.set(0.8, -0.3, 0.5);
-  scene.add(fill);
-  scene.add(new DirectionalLight('#e9e6db', 0.60));
+  scene.add(new AmbientLight('#ffffff', 2.55));
+  const light = new DirectionalLight('#ffffff', 0.48);
+  light.position.set(-0.65, 0.8, 1.4);
+  scene.add(light);
 
   const geometry = makeSphereGrid();
   const morphUniforms = {
@@ -232,7 +230,7 @@ export function createGlobeRenderer(canvas: HTMLCanvasElement, world: FeatureCol
       const nextTexture = makeMapTexture(world);
       if (nextTexture) {
         texture = nextTexture;
-        const material = new MeshPhongMaterial({ map: texture, shininess: 13, specular: new Color('#746d56'), side: DoubleSide });
+        const material = new MeshPhongMaterial({ map: texture, shininess: 8, specular: new Color('#171b19'), side: DoubleSide });
         material.onBeforeCompile = shader => {
           Object.assign(shader.uniforms, morphUniforms);
           shader.vertexShader = shader.vertexShader.replace(

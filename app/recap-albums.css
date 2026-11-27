@@ -1,0 +1,21 @@
+.recap-albums { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.recap-album-card { position:relative; min-height:190px; padding:0; overflow:hidden; border:0; border-radius:10px; background:#60766a; color:white; text-align:left; box-shadow:0 5px 16px #263e3020; transition:transform 180ms ease,box-shadow 180ms ease; }
+.recap-album-card:hover { transform:translateY(-3px); box-shadow:0 9px 22px #263e3033; }
+.recap-album-card:focus-visible,.recap-album-navigation button:focus-visible { outline:3px solid #b95f3d; outline-offset:3px; }
+.recap-album-card img,.recap-album-shade { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.recap-album-shade { background:linear-gradient(180deg,transparent 30%,#182d24d9 100%); }
+.recap-album-copy { position:absolute; left:14px; right:20px; bottom:14px; display:grid; gap:5px; }
+.recap-album-copy strong { font-size:17px; line-height:1.15; }
+.recap-album-copy small { font-size:11px; opacity:.88; }
+.recap-album-arrow { position:absolute; right:13px; top:12px; font-size:19px; }
+.recap-album-heading { margin:0 0 12px; }
+.recap-album-heading h2 { margin:8px 0 0; font-size:21px; }
+.recap-album-navigation { display:flex; align-items:center; gap:8px; margin:0 0 14px; }
+.recap-album-navigation button { border:1px solid #dce5db; background:#fff; color:#3f5e4d; border-radius:9px; min-width:44px; min-height:44px; font-size:18px; }
+.recap-album-navigation button:disabled { opacity:.4; }
+.recap-album-navigation span { min-width:70px; text-align:center; color:#647b6a; font-size:12px; }
+.recap-album-navigation .recap-new { margin-left:auto; padding:0 12px; font-size:13px; font-weight:700; }
+.recap-drawer .recap-trip-select { display:none; }
+.recap-drawer .recap-studio { animation: recap-album-open 220ms ease-out both; }
+@keyframes recap-album-open { from { opacity:.65; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@media(prefers-reduced-motion:reduce) { .recap-album-card { transition:none; } .recap-album-card:hover { transform:none; } .recap-drawer .recap-studio { animation:none; } }

@@ -166,3 +166,15 @@
   .atlas-guidance{font-size:12px;margin-top:8px}
   .top-actions .primary{min-height:42px;padding:10px 12px;font-size:13px}
 }
+
+.trip-title .trip-delete-trigger { width: 44px; height: 44px; flex: none; background: transparent; border: 0; color: #7a665c; }
+.trip-title .trip-delete-trigger:hover { color: #953b30; background: #f5e9e3; }
+.delete-trip-dialog { width: min(26rem, calc(100% - 2rem)); margin: auto; border: 1px solid #dbdfd7; border-radius: 18px; padding: 24px; background: #fffdf7; color: #293d35; box-shadow: 0 18px 80px #1a342d36; }
+.delete-trip-dialog::backdrop { background: #1e302c65; }
+.delete-trip-dialog h2 { margin: 0 0 12px; font-size: 1.5rem; overflow-wrap: anywhere; }
+.delete-trip-dialog p { font-size: 1rem; line-height: 1.5; margin: 0 0 20px; }
+.delete-trip-dialog .drawer-actions { justify-content: flex-end; }
+.delete-trip-dialog button { min-height: 44px; }
+.trip-delete-confirm { border: 0; border-radius: 9px; padding: 0 18px; background: #943e34; color: #fff; font-weight: 650; }
+.photo-import-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 0; color: #375447; font-size: .95rem; }
+.photo-import-status progress { flex: 1 1 100px; min-width: 70px; height: 8px; accent-color: #53765f; }

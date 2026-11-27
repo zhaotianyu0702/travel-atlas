@@ -1,14 +1,17 @@
 import { env } from 'cloudflare:workers';
 import { defaultAccountId, mutateStore, readStore, storage } from './cloud-store';
-import { importPhoto } from './cloud-import';
+import { importPhotosBatch } from './cloud-import';
+import { removeTrip } from './trip-delete';
 import { applyPhotoPatch, nullableIsoDate, restorePhoto, setTripCover, softDeletePhoto, updatePhotoBatch } from './photo-update';
+import { cutPhotoIds, editRecapCut, validateRecapCut } from './recap-cut';
 import { photoCaptureDate } from './photo-time';
 import { roadRouteStatus, scheduleRoadRoute } from './cloud-road-route';
 import { roadRouteKey, routePoints } from './road-route';
 import type { Photo, Recap, Store, Trip } from './types';
+import { recapVisualEvidence } from './recap-visual-evidence';
 
 const accountId=defaultAccountId;
-const cleanPhoto=(photo:Photo) => { const {originalPath: _originalPath, thumbnailPath: _thumbnailPath, ...clean}=photo; return clean; };
+const cleanPhoto=(photo:Photo) => { const {originalPath: _originalPath, thumbnailPath: _thumbnailPath, recapVisualDescription: _recapVisualDescription, ...clean}=photo; return clean; };
 const json=(data:unknown, status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
 function str(value:unknown, field:string):string {if(typeof value!=='string'||!value.trim()) throw new Error(`${field} is required`);return value.trim();}
 async function body(req:Request):Promise<Record<string,unknown>> {const b=await req.json();if(!b||typeof b!=='object'||Array.isArray(b)) throw new Error('Invalid request');return b as Record<string,unknown>;}
@@ -44,14 +47,39 @@ function updateRecap(s:Store, r:Recap, b:Record<string,unknown>, recalculate:boo
   const matches=s.photos.filter(p=>p.accountId===accountId&&!p.deletedAt&&(!r.tripIds.length||r.tripIds.includes(p.tripId))&&(!r.startDate||!!p.capturedAt&&photoCaptureDate(p)>=r.startDate.slice(0,10))&&(!r.endDate||!!p.capturedAt&&photoCaptureDate(p)<=r.endDate.slice(0,10))&&(!r.place||`${p.placeName} ${p.country}`.toLowerCase().includes(r.place.toLowerCase())));
   if('photoIds' in b){if(!Array.isArray(b.photoIds)||!b.photoIds.every(x=>typeof x==='string'&&matches.some(p=>p.id===x)))throw new Error('Photos must match the selected filters');r.photoIds=[...new Set(b.photoIds as string[])];}
   else if(recalculate)r.photoIds=matches.map(p=>p.id);else if(!r.photoIds.every(id=>s.photos.some(p=>p.id===id&&p.accountId===accountId&&!!p.deletedAt)||matches.some(p=>p.id===id)))throw new Error('Existing photos do not match the selected filters');
+  if ('cut' in b) r.cut = b.cut === null ? null : validateRecapCut(b.cut, r.photoIds);
+  else if ('photoIds' in b && r.cut) r.cut = editRecapCut(r.cut, r.photoIds);
+  if (r.cut && (cutPhotoIds(r.cut).join('|') !== r.photoIds.join('|'))) {
+    throw new Error('The recap cut must match the selected photo order');
+  }
   r.updatedAt=new Date().toISOString();return r;
+}
+
+// Record keys before touching R2 so a transient failure can be retried on workspace load.
+async function cleanupDeletedMedia(): Promise<boolean> {
+  const snapshot = await readStore();
+  const referenced = new Set(snapshot.photos.flatMap(photo => [photo.originalPath, photo.thumbnailPath]));
+  const pending = snapshot.pendingMediaDeletes ?? [];
+  const safe = pending.filter(path => !referenced.has(path));
+  if (!safe.length) return pending.length > 0;
+  const deleted = new Set<string>();
+  for (let start = 0; start < safe.length; start += 1000) {
+    const batch = safe.slice(start, start + 1000);
+    try { await storage().delete(batch); }
+    catch { break; }
+    for (const key of batch) deleted.add(key);
+  }
+  if (deleted.size) await mutateStore(s => { s.pendingMediaDeletes = (s.pendingMediaDeletes ?? []).filter(path => !deleted.has(path)); });
+  return deleted.size !== pending.length;
 }
 export async function routeApi(req:Request,path:string[]):Promise<Response> {
   const [resource,id,action]=path, method=req.method;
   if(resource==='workspace'&&method==='GET'){
     const s=await readStore();
+    if (s.pendingMediaDeletes?.length) await cleanupDeletedMedia().catch(() => true);
     const photos=s.photos.filter(photo=>photo.accountId===accountId&&!photo.deletedAt);
-    return json({account:s.accounts.find(a=>a.id===accountId),accounts:s.accounts.filter(a=>a.id===accountId),trips:workspaceTrips(s.trips.filter(x=>x.accountId===accountId),photos,s.routeRequests),photos:photos.map(cleanPhoto),recaps:s.recaps.filter(x=>x.accountId===accountId),jobs:s.jobs.filter(x=>x.accountId===accountId),model:(env as unknown as {ATLAS_MODEL?:string}).ATLAS_MODEL||'gpt-6.1-terra',provider:'openai'});
+    const evidence=recapVisualEvidence(photos,s.recapCutJobs??[],accountId);
+    return json({account:s.accounts.find(a=>a.id===accountId),accounts:s.accounts.filter(a=>a.id===accountId),trips:workspaceTrips(s.trips.filter(x=>x.accountId===accountId),photos,s.routeRequests),photos:photos.map(photo=>{const description=evidence.get(photo.id);return description?{...cleanPhoto(photo),recapVisualDescription:description}:cleanPhoto(photo);}),recaps:s.recaps.filter(x=>x.accountId===accountId),jobs:s.jobs.filter(x=>x.accountId===accountId),model:(env as unknown as {ATLAS_MODEL?:string}).ATLAS_MODEL||'gpt-6.1-terra',provider:'openai'});
   }
   if(resource==='accounts'){if(method==='GET')return json((await readStore()).accounts.filter(a=>a.id===accountId));if(method==='PATCH'&&id===accountId){const b=await body(req);return json(await mutateStore(s=>{const a=s.accounts.find(x=>x.id===accountId);if(!a)throw new Error('Not found');a.name=str(b.name,'name');return a;}));}throw new Error('Only the owner profile is supported');}
   if(resource==='trips'&&!id&&method==='POST'){
@@ -67,11 +95,22 @@ export async function routeApi(req:Request,path:string[]):Promise<Response> {
       return trip;
     }));
   }
+  if(resource==='trips'&&id&&action==='photo-hashes'&&method==='GET'){const s=await readStore();if(!s.trips.some(t=>t.id===id&&t.accountId===accountId))throw new Error('Not found');return json({hashes:[...new Set(s.photos.filter(p=>p.accountId===accountId&&p.tripId===id).map(p=>p.sha256))]});}
   if(resource==='trips'&&id&&action==='route'&&method==='GET')return json(await roadRouteStatus(accountId,id));
   if(resource==='trips'&&id&&action==='route'&&method==='POST'){const b=await body(req);if(b.consent!==true)throw new Error('Route sharing consent required');return json(await scheduleRoadRoute(accountId,id));}
   if(resource==='trips'&&id&&!action&&method==='PATCH'){const b=await body(req);return json(await mutateStore(s=>{const t=s.trips.find(x=>x.id===id&&x.accountId===accountId);if(!t)throw new Error('Not found');if('coverPhotoId'in b)setTripCover(s,accountId,id,b.coverPhotoId);if('title'in b)t.title=str(b.title,'title');if('notes'in b){if(typeof b.notes!=='string')throw new Error('Invalid notes');t.notes=b.notes;}if('startDate'in b)t.startDate=nullableIsoDate(b.startDate);if('endDate'in b)t.endDate=nullableIsoDate(b.endDate);if(t.startDate&&t.endDate&&t.startDate>t.endDate)throw new Error('Start date must be before end date');t.updatedAt=new Date().toISOString();return t;}));}
-  if(resource==='trips'&&id&&method==='DELETE'){await mutateStore(s=>{if(!s.trips.some(t=>t.id===id&&t.accountId===accountId))throw new Error('Not found');if(s.photos.some(p=>p.tripId===id&&p.accountId===accountId))throw new Error('Move or restore photos before deleting this trip');s.trips=s.trips.filter(t=>!(t.id===id&&t.accountId===accountId));s.jobs=s.jobs.filter(j=>!(j.tripId===id&&j.accountId===accountId));s.recaps.filter(r=>r.accountId===accountId).forEach(r=>{r.tripIds=r.tripIds.filter(t=>t!==id);});});return json({ok:true});}
-  if(resource==='photos'&&!id&&method==='POST'){const form=await req.formData(),tripId=form.get('tripId'),files=form.getAll('files'),thumbs=form.getAll('thumbnails');if(typeof tripId!=='string'||!(await readStore()).trips.some(t=>t.id===tripId&&t.accountId===accountId))throw new Error('Trip not found');if(!files.length||files.some(f=>typeof f==='string')||thumbs.length!==files.length||thumbs.some(f=>typeof f==='string'))throw new Error('Select files with matching thumbnails');let sizes:unknown;try{sizes=JSON.parse(String(form.get('dimensions')));}catch{throw new Error('Invalid dimensions');}if(!Array.isArray(sizes)||sizes.length!==files.length)throw new Error('Invalid dimensions');let sources:unknown=null;if(form.has('sources')){try{sources=JSON.parse(String(form.get('sources')));}catch{throw new Error('Invalid source metadata');}if(!Array.isArray(sources)||sources.length!==files.length)throw new Error('Invalid source metadata');}const imported:ReturnType<typeof cleanPhoto>[]=[],errors:{fileName:string;error:string}[]=[];let duplicates=0;for(let i=0;i<files.length;i++){const file=files[i] as File;try{const p=await importPhoto(accountId,tripId,file,thumbs[i] as File,sizes[i],Array.isArray(sources)?sources[i]:undefined);if(p)imported.push(cleanPhoto(p));else duplicates++;}catch(e){errors.push({fileName:file.name,error:e instanceof Error?e.message:'Import failed'});}}return json({imported,duplicates,errors});}
+  if(resource==='trips'&&id&&!action&&method==='DELETE'){await mutateStore(s=>removeTrip(s,accountId,id));const cleanupPending=await cleanupDeletedMedia().catch(()=>true);return json({ok:true,cleanupPending});}
+  if(resource==='photos'&&!id&&method==='POST'){
+    const form=await req.formData(),tripId=form.get('tripId'),files=form.getAll('files'),thumbs=form.getAll('thumbnails');
+    const snapshot=await readStore();
+    if(typeof tripId!=='string'||!snapshot.trips.some(t=>t.id===tripId&&t.accountId===accountId))throw new Error('Trip not found');
+    if(!files.length||files.some(f=>typeof f==='string')||thumbs.length!==files.length||thumbs.some(f=>typeof f==='string'))throw new Error('Select files with matching thumbnails');
+    let sizes:unknown;try{sizes=JSON.parse(String(form.get('dimensions')));}catch{throw new Error('Invalid dimensions');}
+    if(!Array.isArray(sizes)||sizes.length!==files.length)throw new Error('Invalid dimensions');
+    let sources:unknown=null;if(form.has('sources')){try{sources=JSON.parse(String(form.get('sources')));}catch{throw new Error('Invalid source metadata');}if(!Array.isArray(sources)||sources.length!==files.length)throw new Error('Invalid source metadata');}
+    const result=await importPhotosBatch(accountId,tripId,files.map((file,i)=>({file:file as File,thumbnail:thumbs[i] as File,size:sizes[i],source:Array.isArray(sources)?sources[i]:undefined})),snapshot);
+    return json({...result,imported:result.imported.map(cleanPhoto)});
+  }
   if(resource==='photos'&&id==='trash'&&method==='GET')return json((await readStore()).photos.filter(p=>p.accountId===accountId&&!!p.deletedAt).map(cleanPhoto));
   if(resource==='photos'&&id==='batch'&&method==='POST'){const b=await body(req);if(Object.keys(b).some(k=>!['photoIds','patch'].includes(k)))throw new Error('Invalid request');return json({updated:(await mutateStore(s=>updatePhotoBatch(s,accountId,b.photoIds,b.patch))).map(cleanPhoto)});}
   if(resource==='photos'&&id&&action==='restore'&&method==='POST')return json(cleanPhoto(await mutateStore(s=>restorePhoto(s,accountId,id))));

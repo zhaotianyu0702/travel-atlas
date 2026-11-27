@@ -1,6 +1,6 @@
 # Held-out location evaluation
 
-This is the reusable protocol. The private real-photo pilot materials are not included in this public source tree. The offline scorer makes no model or network calls; its bundled records are invented solely to check calculations. Human task time has not been measured.
+This is the reusable protocol. See the [November 18 real-photo pilot](location-pilot-2026-11-18.md) for measured location error and paired agent-operated correction times. The offline scorer makes no model or network calls; its bundled records are invented solely to check calculations. Human task time has not been measured.
 
 ## Freeze and mask the sample
 

@@ -1,0 +1,28 @@
+import type { RecapMusic } from "./recap-music-library";
+
+export const CITY_MUSIC: RecapMusic[] = [
+  { id: "atlas-city-beautiful-city", title: "Beautiful City", mood: "Bright & airy", profiles: ["city", "journey"], styles: ["cinematic"],
+    src: "/recap-audio/atlas-city-beautiful-city.m4a", beatSeconds: 60 / 170, beatOffsetSeconds: 0.03, previewSeconds: 12 },
+  { id: "atlas-city-city-loop-0", title: "City Loop", mood: "Upbeat & urban", profiles: ["city", "journey"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-city-loop-0.m4a", beatSeconds: 60 / 137.2, beatOffsetSeconds: 0.374, previewSeconds: 12 },
+  { id: "atlas-city-cool-adventure", title: "Cool Adventure", mood: "Confident & moving", profiles: ["journey", "city"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-cool-adventure.m4a", beatSeconds: 60 / 124, beatOffsetSeconds: 0.011, previewSeconds: 12 },
+  { id: "atlas-city-cool-city", title: "Cool City", mood: "Cool & lively", profiles: ["city", "people"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-cool-city.m4a", beatSeconds: 60 / 124, beatOffsetSeconds: 0.25, previewSeconds: 12 },
+  { id: "atlas-city-seaside-village", title: "Seaside Village", mood: "Light & relaxed", profiles: ["people", "coast"], styles: ["minimal"],
+    src: "/recap-audio/atlas-city-seaside-village.m4a", beatSeconds: 60 / 160, beatOffsetSeconds: 0.058, previewSeconds: 12 },
+  { id: "atlas-city-sideways-city", title: "Sideways City", mood: "Playful & bustling", profiles: ["city", "people"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-sideways-city.m4a", beatSeconds: 60 / 125, beatOffsetSeconds: 0.188, previewSeconds: 12 },
+  { id: "atlas-city-sky-blue-street", title: "Sky Blue Street", mood: "Sunny & energetic", profiles: ["journey", "city"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-sky-blue-street.m4a", beatSeconds: 60 / 165, beatOffsetSeconds: 0.04, previewSeconds: 12 },
+  { id: "atlas-city-space-city", title: "Space City", mood: "Nighttime & futuristic", profiles: ["city", "journey"], styles: ["cinematic"],
+    src: "/recap-audio/atlas-city-space-city.m4a", beatSeconds: 60 / 115, beatOffsetSeconds: 0.374, previewSeconds: 12 },
+  { id: "atlas-city-sunny-city", title: "Sunny City", mood: "Cheerful & bright", profiles: ["city", "people"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-sunny-city.m4a", beatSeconds: 60 / 120, beatOffsetSeconds: 0.025, previewSeconds: 12 },
+  { id: "atlas-city-trance-city", title: "Trance City", mood: "Night lights & motion", profiles: ["city", "journey"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-trance-city.m4a", beatSeconds: 60 / 130, beatOffsetSeconds: 0.344, previewSeconds: 12 },
+  { id: "atlas-city-urban-shop", title: "Urban Shop", mood: "Easygoing & warm", profiles: ["people", "city"], styles: ["minimal"],
+    src: "/recap-audio/atlas-city-urban-shop.m4a", beatSeconds: 60 / 92, beatOffsetSeconds: 0.034, previewSeconds: 12 },
+  { id: "atlas-city-urban-theme", title: "Urban Theme", mood: "Bright & jazzy", profiles: ["city", "people"], styles: ["dynamic"],
+    src: "/recap-audio/atlas-city-urban-theme.m4a", beatSeconds: 60 / 115, beatOffsetSeconds: 0.042, previewSeconds: 12 },
+];

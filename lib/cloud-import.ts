@@ -1,7 +1,7 @@
 import exifr from 'exifr';
-import { mutateStore, storage } from './cloud-store';
+import { mutateStore, readStore, storage } from './cloud-store';
 import { parsePhotoTime, type PhotoTimeResult } from './photo-time';
-import type { Photo } from './types';
+import type { Photo, Store } from './types';
 
 const MAX_FILE = 25 * 1024 * 1024, MAX_THUMB = 2 * 1024 * 1024;
 function imageType(b: Uint8Array): string | null {
@@ -61,9 +61,15 @@ function sourceMetadata(input: unknown): { sha256: string; mode: 'optimized' | '
   if (checked.capturedAt!==capturedAt || checked.timezoneKnown!==timezoneKnown || checked.offsetMinutes!==offsetMinutes || checked.localDateTime!==localDateTime) throw new Error('Invalid source time');
   return {sha256:source.sha256,mode:source.mode as 'optimized' | 'original',time:checked,latitude:lat as number|null,longitude:lng as number|null};
 }
-export async function importPhoto(accountId:string, tripId:string, file:File, thumbnail:File, size:unknown, sourceInput?:unknown): Promise<Photo|null> {
+type ImportEntry = { file: File; thumbnail: File; size: unknown; source?: unknown };
+type Prepared = { photo: Photo; buffer: ArrayBuffer; thumbBuffer: ArrayBuffer; thumbType: string };
+type ImportError = { fileName: string; error: string };
+
+async function preparePhoto(accountId: string, tripId: string, entry: ImportEntry): Promise<Prepared> {
+  const {file, thumbnail, size, source: sourceInput} = entry;
   if (!file.size || file.size > MAX_FILE) throw new Error('File must be between 1 byte and 25 MB');
   if (!thumbnail || !thumbnail.size || thumbnail.size > MAX_THUMB) throw new Error('A thumbnail under 2 MB is required');
+  const source=sourceMetadata(sourceInput);
   const [buffer, thumbBuffer] = await Promise.all([file.arrayBuffer(), thumbnail.arrayBuffer()]);
   const bytes = new Uint8Array(buffer), thumb = new Uint8Array(thumbBuffer), mimeType=imageType(bytes), thumbType=imageType(thumb);
   if (!mimeType) throw new Error('Unsupported image. Use JPEG, PNG, WebP, or HEIC');
@@ -71,14 +77,17 @@ export async function importPhoto(accountId:string, tripId:string, file:File, th
   const thumbSize=thumbnailDimensions(thumb,thumbType);
   if(!thumbSize.width || !thumbSize.height || thumbSize.width>2048 || thumbSize.height>2048) throw new Error('Invalid thumbnail dimensions');
   const {width,height}=dimensions(size);
-  const storedHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)), b=>b.toString(16).padStart(2,'0')).join('');
-  const source=sourceMetadata(sourceInput);
-  if (source?.mode === 'original' && source.sha256 !== storedHash) throw new Error('Source hash does not match original');
   if (source?.mode === 'optimized' && mimeType !== 'image/jpeg') throw new Error('Optimized image must be JPEG');
-  const hash=source?.sha256 || storedHash;
+  // Original and legacy uploads must be hashed on the server; optimized uploads
+  // carry the original's hash, which cannot be reconstructed from the JPEG.
+  const storedHash = source?.mode === 'optimized' ? null : Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)), b=>b.toString(16).padStart(2,'0')).join('');
+  if (source?.mode === 'original' && source.sha256 !== storedHash) throw new Error('Source hash does not match original');
+  const hash=source?.sha256 || storedHash!;
   let exif:Record<string,unknown>={}, raw:Record<string,unknown>={};
-  try { exif=await exifr.parse(bytes,{gps:true,exif:true,tiff:true}) || {}; } catch { /* optional EXIF */ }
-  try { raw=await exifr.parse(bytes,{gps:true,exif:true,tiff:true,reviveValues:false}) || {}; } catch { /* optional EXIF */ }
+  if (!source) {
+    try { exif=await exifr.parse(bytes,{gps:true,exif:true,tiff:true}) || {}; } catch { /* optional EXIF */ }
+    try { raw=await exifr.parse(bytes,{gps:true,exif:true,tiff:true,reviveValues:false}) || {}; } catch { /* optional EXIF */ }
+  }
   const timeMetadata=source?.time || parsePhotoTime(raw), capturedAt=timeMetadata.capturedAt;
   const lat=source ? source.latitude : exif.latitude, lng=source ? source.longitude : exif.longitude;
   const valid=typeof lat==='number' && Number.isFinite(lat) && Math.abs(lat)<=90 && typeof lng==='number' && Number.isFinite(lng) && Math.abs(lng)<=180;
@@ -86,12 +95,83 @@ export async function importPhoto(accountId:string, tripId:string, file:File, th
   const id=crypto.randomUUID(), originalPath=`originals/${id}`, thumbnailPath=`thumbnails/${id}`;
   const photo:Photo={id,accountId,tripId,fileName:file.name,mimeType,width,height,sha256:hash,capturedAt,latitude,longitude,placeName:'',country:'',notes:'',locationSource:valid?'exif':'unknown',confirmed:false,originalPath,thumbnailPath,timeSource:capturedAt?'exif':'unknown',timeMetadata,metadata:{capturedAt,latitude,longitude},createdAt:new Date().toISOString()};
   if (source) Object.assign(photo, {storageMode:source.mode});
+  return {photo,buffer,thumbBuffer,thumbType};
+}
+
+type ImportResult = { imported: Photo[]; duplicates: number; errors: ImportError[] };
+
+export async function importPhotosBatch(accountId: string, tripId: string, entries: ImportEntry[], snapshot?: Store): Promise<ImportResult> {
+  const result: ImportResult = { imported: [], duplicates: 0, errors: [] };
+  let start = 0;
+  while (start < entries.length) {
+    let end = start;
+    let bytes = 0;
+    while (end < entries.length && end - start < 20) {
+      const size = entries[end].file.size + entries[end].thumbnail.size;
+      if (end > start && bytes + size > 24 * 1024 * 1024) break;
+      bytes += size;
+      end++;
+    }
+    const batch = await importChunk(accountId, tripId, entries.slice(start, end), start === 0 ? snapshot : undefined);
+    result.imported.push(...batch.imported);
+    result.duplicates += batch.duplicates;
+    result.errors.push(...batch.errors);
+    start = end;
+  }
+  return result;
+}
+
+/** Keep concurrent object writes and in-memory image buffers bounded per request. */
+async function importChunk(accountId: string, tripId: string, entries: ImportEntry[], snapshot?: Store): Promise<ImportResult> {
+  const initial=snapshot || await readStore();
+  if (!initial.trips.some(t=>t.id===tripId && t.accountId===accountId)) throw new Error('Trip not found');
+  const known=new Set(initial.photos.filter(p=>p.accountId===accountId && p.tripId===tripId).map(p=>p.sha256));
+  const prepared=await Promise.all(entries.map(async entry=>{
+    try { return {value:await preparePhoto(accountId,tripId,entry)}; }
+    catch(e) { return {error:e instanceof Error?e.message:'Import failed'}; }
+  }));
+  const errors: ImportError[]=[]; let duplicates=0;
+  const groups=new Map<string,{value:Prepared; index:number}[]>();
+  for (let i=0;i<prepared.length;i++) {
+    const item=prepared[i];
+    if ('error' in item && item.error !== undefined) { errors.push({fileName:entries[i].file.name,error:item.error}); continue; }
+    const value=item.value!;
+    if (known.has(value.photo.sha256)) { duplicates++; continue; }
+    const group=groups.get(value.photo.sha256) || []; group.push({value,index:i}); groups.set(value.photo.sha256,group);
+  }
   const bucket=storage();
+  const cleanup=async (value:Prepared)=>{await Promise.allSettled([bucket.delete(value.photo.originalPath),bucket.delete(value.photo.thumbnailPath)]);};
+  // Identical entries are tried in order: if the first object write fails, a
+  // subsequent copy can still succeed and is not incorrectly called duplicate.
+  const uploaded=(await Promise.all([...groups.values()].map(async group=>{
+    let winner: {value:Prepared; index:number; duplicates: number[]} | undefined;
+    for (const item of group) {
+      if (winner) { winner.duplicates.push(item.index); continue; }
+      const {value,index}=item;
+      const writes=await Promise.allSettled([bucket.put(value.photo.originalPath,value.buffer,{httpMetadata:{contentType:value.photo.mimeType}}),bucket.put(value.photo.thumbnailPath,value.thumbBuffer,{httpMetadata:{contentType:value.thumbType}})]);
+      const failure=writes.find(x=>x.status==='rejected');
+      if (failure?.status==='rejected') { await cleanup(value); errors.push({fileName:entries[index].file.name,error:failure.reason instanceof Error?failure.reason.message:'Import failed'}); }
+      else winner={...item,duplicates:[]};
+    }
+    return winner;
+  }))).filter((item): item is {value:Prepared; index:number; duplicates:number[]}=>!!item).sort((a,b)=>a.index-b.index);
+  if (!uploaded.length) return {imported:[],duplicates,errors};
   try {
-    const writes=await Promise.allSettled([bucket.put(originalPath,buffer,{httpMetadata:{contentType:mimeType}}),bucket.put(thumbnailPath,thumbBuffer,{httpMetadata:{contentType:thumbType}})]);
-    const failure=writes.find(x=>x.status==='rejected'); if(failure?.status==='rejected') throw failure.reason;
-    const inserted=await mutateStore(s=>{if(!s.trips.some(t=>t.id===tripId && t.accountId===accountId)) throw new Error('Trip not found'); if(s.photos.some(p=>p.accountId===accountId && p.tripId===tripId && p.sha256===hash)) return false; s.photos.push(photo); return true;});
-    if (!inserted) { await Promise.all([bucket.delete(originalPath),bucket.delete(thumbnailPath)]); return null; }
-    return photo;
-  } catch(e) { await Promise.allSettled([bucket.delete(originalPath),bucket.delete(thumbnailPath)]); throw e; }
+    const accepted=await mutateStore(s=>{
+      if(!s.trips.some(t=>t.id===tripId && t.accountId===accountId)) throw new Error('Trip not found');
+      const hashes=new Set(s.photos.filter(p=>p.accountId===accountId && p.tripId===tripId).map(p=>p.sha256));
+      const inserted:string[]=[];
+      for (const {value} of uploaded) if (!hashes.has(value.photo.sha256)) { hashes.add(value.photo.sha256); s.photos.push(value.photo); inserted.push(value.photo.id); }
+      return inserted;
+    });
+    const ids=new Set(accepted), rejected=uploaded.filter(x=>!ids.has(x.value.photo.id));
+    await Promise.all(rejected.map(x=>cleanup(x.value)));
+    duplicates+=uploaded.reduce((count,x)=>count+x.duplicates.length,0)+rejected.length;
+    return {imported:uploaded.filter(x=>ids.has(x.value.photo.id)).map(x=>x.value.photo),duplicates,errors};
+  } catch(e) {
+    await Promise.all(uploaded.map(x=>cleanup(x.value)));
+    const message=e instanceof Error?e.message:'Import failed';
+    for (const item of uploaded) for (const index of [item.index,...item.duplicates]) errors.push({fileName:entries[index].file.name,error:message});
+    return {imported:[],duplicates,errors};
+  }
 }

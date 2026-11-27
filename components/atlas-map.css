@@ -9,7 +9,7 @@
   overflow: hidden;
 }
 .atlas-map-v2 {
-  background: radial-gradient(ellipse at 49% 38%, #ece3cc 0, #ddd4bc 43%, #c1c5af 78%, #a9b6a3 115%);
+  background: radial-gradient(ellipse at 49% 38%, #f5f4ed 0, #eceee8 65%, #e1e9e3 115%);
   isolation: isolate;
 }
 .atlas-map-v2::before {
@@ -18,8 +18,8 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 80%, #5b766240, transparent 38%),
-    repeating-radial-gradient(circle at 50% 50%, transparent 0 71px, #52675212 72px, transparent 73px 144px);
+    radial-gradient(ellipse at 50% 80%, #8fa8a51a, transparent 38%),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 71px, #66817c0d 72px, transparent 73px 144px);
   transition: opacity 320ms ease-out;
 }
 .atlas-map-v2[data-map-projection='flat']::before { opacity: 0; }
@@ -71,6 +71,9 @@
 .atlas-trip-marker-halo { fill: #fffaf0aa; stroke: #fffaf0; stroke-width: 1; }
 .atlas-trip-marker { stroke: #fffaf0; stroke-width: 3; }
 .atlas-trip-marker-dot { fill: #fffaf0; }
+.atlas-trip-cover { opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
+.atlas-trip-cover-rim { fill: none; stroke: #fffaf0; stroke-width: 3; }
+.atlas-map-overlay [data-trip-marker]:is(:hover, :focus-visible) .atlas-trip-cover { opacity: 1; }
 .atlas-map-overlay [data-trip-marker]:is(:hover, :focus-visible) .atlas-trip-marker-halo { stroke: #314d49; stroke-width: 2.5; }
 .atlas-photo-leader { stroke: #845643; stroke-width: 1.4; vector-effect: non-scaling-stroke; pointer-events: none; }
 .atlas-photo-pin image { pointer-events: none; }
@@ -84,4 +87,4 @@
   .atlas-map-v2[data-panel-open='true'] .atlas-map-attribution { bottom: calc(46dvh + 12px); }
   .atlas-map-attribution { right: 63px; bottom: 16px; }
 }
-@media (prefers-reduced-motion: reduce) { .atlas-globe-canvas, .atlas-street-map, .atlas-map-overlay { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .atlas-globe-canvas, .atlas-street-map, .atlas-map-overlay, .atlas-trip-cover { transition: none; } }

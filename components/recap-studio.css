@@ -1,0 +1,624 @@
+.recap-studio {
+  padding-top: 12px;
+  font-size: 16px;
+}
+.recap-trip-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #667770;
+  font-size: 14px;
+}
+.recap-trip-select select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #dbdfd4;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #23463e;
+  background: #f7f5ee;
+  font-size: 16px;
+}
+.recap-title-input {
+  width: 100%;
+  border: 0 !important;
+  padding: 0 0 16px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font:
+    28px/1.15 "DM Serif Display",
+    Georgia,
+    serif !important;
+  color: #233d37;
+}
+.recap-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/5;
+  overflow: hidden;
+  border-radius: 15px;
+  isolation: isolate;
+  background: #183d37;
+  color: #fffaf0;
+}
+.recap-stage-photo {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: recap-appear 0.6s ease both;
+}
+.recap-stage-photo.moving {
+  animation:
+    recap-appear 0.6s ease both,
+    recap-drift 3s ease-out both;
+}
+.recap-stage-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 30, 28, 0.42),
+    transparent 40%,
+    rgba(12, 30, 28, 0.72)
+  );
+}
+.recap-stage-heading {
+  position: absolute;
+  top: 6%;
+  left: 6%;
+  right: 12%;
+  max-height: 40%;
+  overflow: hidden;
+  text-align: left;
+  text-shadow: 0 2px 9px #071d1bf0, 0 2px 23px #071d1bc2;
+}
+.recap-stage-heading span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: #fff9e4d9;
+}
+.recap-stage-heading h2 {
+  font-size: clamp(24px, 2.3vw, 32px);
+  line-height: 1.04;
+  margin: 8px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  text-wrap: balance;
+}
+.recap-stage-heading p {
+  color: #f3efe2;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+.recap-route-sketch {
+  position: absolute;
+  bottom: 62px;
+  right: 6%;
+  width: min(43%, 185px);
+  opacity: 1;
+  pointer-events: none;
+  border: 1.5px solid #fffaf0eb;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 28px #071f2938;
+}
+.recap-route-sketch canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.recap-stage-controls {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  bottom: 15px;
+  left: 13px;
+  right: 13px;
+  gap: 10px;
+}
+.recap-stage button {
+  display: grid;
+  place-items: center;
+  color: #fffaf0;
+  background: #122e2a70;
+  border: 1px solid #ffffff38;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 0;
+  backdrop-filter: blur(12px);
+}
+.recap-stage button svg {
+  width: 19px;
+  height: 19px;
+}
+.recap-progress {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+.recap-progress button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  width: auto;
+  min-width: 0;
+  height: 40px;
+  flex: 1;
+  backdrop-filter: none;
+}
+.recap-progress button span {
+  width: 100%;
+  height: 3px;
+  background: #fff8;
+  border-radius: 3px;
+  transition:
+    height 0.2s,
+    background 0.2s;
+}
+.recap-progress button.active span {
+  height: 5px;
+  background: #edb285;
+}
+.recap-main-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 18px 0 24px;
+}
+.recap-main-actions button {
+  min-height: 52px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  border: 1px solid #234c43;
+  width: 100%;
+}
+.recap-watch {
+  background: #234c43;
+  color: #fffaf0;
+}
+.recap-download {
+  background: #f4f0e7;
+  color: #234c43;
+}
+.recap-download-wrap {
+  position: relative;
+}
+.recap-download-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: #fffef8;
+  box-shadow: 0 12px 42px #163c3530;
+  border: 1px solid #e4e4d6;
+  padding: 7px;
+  width: 210px;
+  border-radius: 14px;
+  z-index: 10;
+}
+.recap-download-menu button {
+  border: 0;
+  background: transparent;
+  justify-content: flex-start;
+  padding: 0 12px;
+  font-size: 16px;
+  min-height: 48px;
+  border-radius: 8px;
+  color: #234c43;
+}
+.recap-download-menu button:hover {
+  background: #e8ede5;
+}
+.recap-strip-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #60736c;
+}
+.recap-strip-heading > div {
+  display: flex;
+  gap: 6px;
+}
+.recap-strip-heading button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #dce1d5;
+  border-radius: 50%;
+  background: transparent;
+  color: #284e43;
+}
+.recap-photo-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 12px;
+  scrollbar-width: thin;
+}
+.recap-photo-strip button {
+  padding: 0;
+  border: 2px solid transparent;
+  background: #e7e8de;
+  width: 72px;
+  height: 88px;
+  border-radius: 9px;
+  flex: none;
+  overflow: hidden;
+  opacity: 0.66;
+}
+.recap-photo-strip button.active {
+  opacity: 1;
+  border-color: #b9633e;
+}
+.recap-photo-strip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.recap-picker {
+  background: #f4f3eb;
+  padding: 16px;
+  border-radius: 14px;
+  margin-top: 16px;
+}
+.recap-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+.recap-pick-grid button {
+  position: relative;
+  padding: 0;
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  background: #e3e7db;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.recap-pick-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.recap-pick-grid button.selected {
+  border-color: #234c43;
+}
+.recap-pick-grid button span {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #234c43;
+  color: white;
+}
+.recap-empty-picker {
+  min-height: 230px;
+  width: 100%;
+  border: 1px dashed #9eafa3;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  background: #f0f1e7;
+  color: #45675b;
+  font-size: 18px;
+}
+.recap-theatre {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: #0f2421f7;
+  backdrop-filter: blur(24px);
+}
+.recap-stage-full {
+  width: min(100%, 1600px);
+  max-height: calc(100dvh - 48px);
+  aspect-ratio: 16/9;
+  border-radius: 10px;
+}
+.recap-stage-full .recap-stage-heading {
+  top: 7%;
+  left: 6%;
+  right: 12%;
+}
+.recap-stage-full .recap-stage-heading h2 {
+  font-size: clamp(32px, 6vw, 80px);
+  max-width: 85%;
+}
+.recap-stage-full .recap-stage-heading span {
+  font-size: clamp(14px, 1.5vw, 20px);
+}
+.recap-stage-full .recap-route-sketch {
+  width: 23%;
+  right: 6%;
+  bottom: 70px;
+}
+.recap-stage-full .recap-stage-controls {
+  left: 6%;
+  right: 6%;
+  bottom: 24px;
+}
+.recap-stage .recap-close-stage {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+}
+.recap-stage .recap-step {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.recap-step.previous {
+  left: 16px;
+}
+.recap-step.next {
+  right: 16px;
+}
+.spinning {
+  animation: recap-spin 1s linear infinite;
+}
+@keyframes recap-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes recap-appear {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes recap-drift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.035);
+  }
+}
+@media (max-width: 600px) {
+  .recap-theatre {
+    padding: 0;
+  }
+  .recap-stage-full {
+    aspect-ratio: 4/5;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .recap-stage-full .recap-stage-heading h2 {
+    max-width: 85%;
+  }
+  .recap-stage-full .recap-route-sketch {
+    width: 43%;
+    bottom: 80px;
+  }
+  .recap-stage-full .recap-stage-controls {
+    bottom: 20px;
+  }
+  .recap-stage .recap-step {
+    top: 64%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recap-stage-photo,
+  .recap-stage-photo.moving,
+  .spinning {
+    animation: none;
+  }
+}
+
+.recap-photo-backdrop {
+  position: absolute;
+  inset: -20px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(22px) brightness(0.45);
+  transform: scale(1.06);
+}
+
+.recap-image-status { position:absolute; inset:0; display:flex; gap:12px; align-items:center; justify-content:center; z-index:2; font-size:16px; pointer-events:none; }
+.recap-image-status button { pointer-events:auto; }
+.recap-stage button:disabled { opacity:.35; cursor:default; }
+.recap-stage button:focus-visible, .recap-studio button:focus-visible { outline:3px solid #edb285; outline-offset:3px; }
+@media (max-height:600px) and (min-width:601px) { .recap-stage-full { width:auto; height:calc(100dvh - 48px); } }
+
+.recap-generate { margin: 0 0 16px; }
+.recap-generate-main {
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  width: 100%; min-height: 48px; color: #28483f; background: #e7eddf;
+  border: 1px solid #d2ddcc; border-radius: 12px; font-weight: 700; font-size: 16px;
+}
+.recap-generate-main:hover { background: #d9e6d4; }
+.recap-generate-panel { padding: 10px; border-radius: 12px; margin-top: 8px; background: #f2f3eb; }
+.recap-generate-top { display: flex; align-items: center; justify-content: space-between; gap: 7px; }
+.recap-source-button, .recap-cut-icon, .recap-cut-use {
+  min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 11px; border: 0; border-radius: 9px; background: #e4ebdf; color: #264a40; font-size: 14px;
+}
+.recap-cut-icon { width: 40px; flex: none; padding: 0; }
+.recap-cut-use { background: #274c43; color: #fffaf0; font-weight: 650; }
+.recap-regenerate { width: 100%; margin-top: 10px; }
+.recap-cut-help, .recap-cut-progress { margin: 10px 2px; line-height: 1.4; font-size: 14px; color: #374e45; }
+.recap-cut-progress progress { width: 100%; display: block; accent-color: #42715e; margin-top: 8px; height: 6px; }
+.recap-cut-picker { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; max-height: 270px; overflow-y: auto; }
+.recap-cut-picker button { position: relative; aspect-ratio: 1; padding: 0; overflow: hidden; border: 2px solid transparent; border-radius: 9px; }
+.recap-cut-picker img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.recap-cut-picker button span { position: absolute; right: 3px; bottom: 3px; color: white; background: #20453de0; border-radius: 50%; padding: 3px; display: grid; }
+.recap-stage-pair { position: absolute; inset: 14% 6% 16%; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1.5%; animation: recap-appear .55s ease both; }
+.recap-stage-pair img { width: 100%; height: 100%; object-fit: contain; }
+@media (max-width: 600px) { .recap-stage-pair { inset: 22% 5% 18%; } }
+@media (prefers-reduced-motion: reduce) { .recap-stage-pair { animation: none; } }
+
+.recap-source-count { padding-left: 4px; color: #486759; font-size: 14px; }
+.recap-idea-cards { display: grid; gap: 8px; margin-top: 8px; }
+.recap-idea {
+  position: relative; display: block; background: #172d2c; color: #fffaf0;
+  width: 100%; height: 120px; padding: 0; text-align: left;
+  border: 0; border-radius: 11px; overflow: hidden;
+}
+.recap-idea::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, #102521e8, transparent 95%); }
+.recap-idea img { width: 100%; height: 100%; object-fit: cover; }
+.recap-idea span { position: absolute; inset: auto 12px 11px; z-index: 1; font-size: 13px; }
+.recap-idea strong { display: block; margin-top: 3px; font: 21px/1.05 Georgia, serif; text-wrap: balance; }
+.recap-idea-review h3 { font: 24px/1.1 Georgia, serif; margin: 12px 0; }
+.recap-review-strip { display: flex; gap: 6px; overflow-x: auto; padding: 1px 1px 8px; }
+.recap-review-still { position: relative; width: 90px; height: 100px; flex: none; border-radius: 8px; overflow: hidden; }
+.recap-review-still img { width: 100%; height: 100%; object-fit: cover; }
+.recap-review-still button { position: absolute; display: grid; place-items: center; inset: 4px 4px auto auto; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #172d2ce8; color: white; }
+.recap-review-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 4px 0 8px; }
+.recap-stage-focus .recap-stage-photo { inset: 6% 5% 21%; width: 90%; height: 73%; }
+.recap-stage-focus .recap-photo-backdrop { display: none; }
+.recap-stage-focus .recap-stage-heading h2 { font-size: clamp(22px, 3vw, 40px); }
+.recap-picker-limit { font-size: 13px; margin: 0 0 10px; }
+
+/* Presentation presets apply only to guided cuts; legacy cuts retain their layout. */
+.recap-preset-minimal .recap-photo-backdrop { opacity: .25; }
+.recap-preset-minimal .recap-stage-shade { opacity: .45; }
+.recap-preset-minimal .recap-stage-heading h2 { font-family: system-ui, sans-serif; font-weight: 400; }
+.recap-preset-cinematic .recap-stage-shade { background: linear-gradient(180deg, rgba(4,12,12,.42), transparent 36%, rgba(4,12,12,.78)); }
+.recap-preset-cinematic .recap-stage-photo { filter: saturate(.85) contrast(1.08); }
+.recap-preset-dynamic .recap-stage-photo { filter: saturate(1.18) contrast(1.06); }
+.recap-preset-dynamic .recap-stage-heading h2 { font-family: system-ui, sans-serif; font-weight: 700; }
+.recap-preset-dynamic .recap-stage-photo.moving { animation-duration: 4s; }
+
+/* Guided presentations give each style a distinct composition. Manual cuts keep their original layout. */
+.recap-preset-minimal {
+  background: #f4eee1;
+  color: #26332c;
+}
+.recap-preset-minimal .recap-photo-backdrop { display: none; }
+.recap-preset-minimal .recap-stage-photo,
+.recap-preset-minimal.recap-stage-focus .recap-stage-photo {
+  inset: 30% 5% 15%; width: 90%; height: 55%; object-fit: cover;
+  filter: none;
+}
+.recap-preset-minimal.recap-extreme-portrait .recap-stage-photo { object-fit: contain; }
+.recap-preset-minimal .recap-stage-pair { inset: 30% 5% 15%; gap: 2%; }
+.recap-preset-minimal .recap-stage-pair img { object-fit: cover; }
+.recap-preset-minimal .recap-stage-shade { display: none; }
+.recap-preset-minimal .recap-stage-heading,
+.recap-preset-minimal.recap-stage-full .recap-stage-heading {
+  top: 5%; left: 6%; right: 6%; max-height: 23%; color: #26332c; text-shadow: none;
+}
+.recap-preset-minimal .recap-stage-heading span,
+.recap-preset-minimal .recap-stage-heading p { color: #526057; }
+.recap-preset-minimal .recap-stage-heading h2 { font-weight: 600; }
+.recap-preset-minimal .recap-route-sketch { border-color: #f4eee1; }
+.recap-preset-minimal .recap-stage-controls button { background: #263e35c9; }
+.recap-preset-minimal .recap-progress button { background: transparent; }
+.recap-preset-minimal .recap-progress button span { background: #67807388; }
+.recap-preset-minimal .recap-progress button.active span { background: #ad6243; }
+
+.recap-preset-cinematic .recap-stage-photo,
+.recap-preset-dynamic .recap-stage-photo,
+.recap-preset-cinematic.recap-stage-focus .recap-stage-photo,
+.recap-preset-dynamic.recap-stage-focus .recap-stage-photo {
+  inset: 0; width: 100%; height: 100%; object-fit: cover;
+}
+.recap-preset-cinematic.recap-extreme-portrait .recap-stage-photo,
+.recap-preset-dynamic.recap-extreme-portrait .recap-stage-photo { object-fit: contain; }
+.recap-preset-cinematic .recap-photo-backdrop,
+.recap-preset-dynamic .recap-photo-backdrop { display: block; filter: blur(22px) brightness(.72); }
+.recap-preset-cinematic .recap-stage-pair,
+.recap-preset-dynamic .recap-stage-pair { inset: 0; gap: 0; }
+.recap-preset-cinematic .recap-stage-pair img,
+.recap-preset-dynamic .recap-stage-pair img { object-fit: cover; }
+.recap-preset-dynamic .recap-stage-pair { grid-template-columns: 65fr 35fr; }
+.recap-preset-dynamic .recap-stage-photo.moving,
+.recap-preset-dynamic .recap-stage-pair.moving { animation: recap-appear .5s ease both, recap-push 3s ease-out both; }
+@keyframes recap-push { from { transform: scale(1.02) translateX(-.7%); } to { transform: scale(1.1) translateX(.7%); } }
+
+/* The copy stays in the upper portion, clear of the fixed lower-right map. */
+.recap-preset-minimal .recap-stage-heading,
+.recap-preset-cinematic .recap-stage-heading,
+.recap-preset-dynamic .recap-stage-heading { max-height: 34%; }
+.recap-preset-minimal .recap-stage-heading h2,
+.recap-preset-cinematic .recap-stage-heading h2,
+.recap-preset-dynamic .recap-stage-heading h2 { font-size: clamp(27px, 3vw, 42px); }
+.recap-stage-full.recap-preset-minimal .recap-stage-heading h2,
+.recap-stage-full.recap-preset-cinematic .recap-stage-heading h2,
+.recap-stage-full.recap-preset-dynamic .recap-stage-heading h2 { font-size: clamp(38px, 6vw, 88px); }
+.recap-stage-full.recap-preset-minimal .recap-route-sketch,
+.recap-stage-full.recap-preset-cinematic .recap-route-sketch,
+.recap-stage-full.recap-preset-dynamic .recap-route-sketch { width: 25%; max-width: none; right: 5%; }
+@media (min-width: 601px) {
+  .recap-stage-full.recap-preset-minimal .recap-stage-photo,
+  .recap-stage-full.recap-preset-minimal.recap-stage-focus .recap-stage-photo,
+  .recap-stage-full.recap-preset-minimal .recap-stage-pair { inset: 5% 5% 5% 38%; width: 57%; height: 90%; }
+  .recap-stage-full.recap-preset-minimal .recap-stage-heading { top: 8%; left: 5%; right: 64%; max-height: 65%; }
+  .recap-stage-full.recap-preset-minimal .recap-stage-heading h2 { max-width: 100%; }
+}
+@media (max-width: 600px) {
+  .recap-stage-full.recap-preset-minimal .recap-route-sketch,
+  .recap-stage-full.recap-preset-cinematic .recap-route-sketch,
+  .recap-stage-full.recap-preset-dynamic .recap-route-sketch { width: 43%; bottom: 80px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recap-preset-dynamic .recap-stage-photo.moving,
+  .recap-preset-dynamic .recap-stage-pair.moving { animation: none; }
+}
+
+.recap-music { margin: -6px 0 22px; padding: 16px; background: #faf9f4; border: 1px solid #d7ddd5; border-radius: 16px; }
+.recap-music-heading, .recap-music-track { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.recap-music-heading h3 { font-size: 1.3rem; margin: 0; }
+.recap-music-heading button, .recap-music-track button { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; background: transparent; color: #285546; border-radius: 50%; }
+.recap-music-track { margin: 6px 0; padding: 0 5px 0 12px; border: 1px solid #dce1d9; border-radius: 10px; }
+.recap-music-track[data-selected=true] { border-color: #587968; background: #e9efe8; }
+.recap-music-track label { display: flex; flex: 1; align-items: center; gap: 10px; cursor: pointer; padding: 10px 0; }
+.recap-music-track input { accent-color: #315d4c; width: 16px; height: 16px; flex: none; margin: 0; }
+.recap-music-track strong, .recap-music-track small { display: block; }
+.recap-music-track strong { font-size: 1rem; line-height: 1.25; }
+.recap-music-track small { margin-top: 3px; font-size: .875rem; color: #51655a; }
+.recap-music > .primary { margin-top: 10px; width: 100%; min-height: 46px; display: flex; justify-content: center; align-items: center; gap: 8px; }
+
+.recap-download-menu { width: min(292px, 82vw); }
+.recap-video-option { display: flex; align-items: stretch; border-bottom: 1px solid #dce1d9; margin-bottom: 4px; padding-bottom: 4px; }
+.recap-video-option .recap-video-direct { flex: 1; min-width: 0; text-align: left; }
+.recap-video-direct span { min-width: 0; }
+.recap-video-direct strong, .recap-video-direct small { display: block; }
+.recap-video-direct small { color: #566c61; font-size: .875rem; font-weight: 450; }
+.recap-video-option .recap-change-music { flex-direction: column; gap: 2px; width: auto; font-size: .875rem; justify-content: center; }
+.recap-music-options { max-height: min(43vh, 23rem); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.recap-music-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 8.5rem); gap: 8px; margin-top: 8px; }
+.recap-music-filters input, .recap-music-filters select { min-width: 0; width: 100%; min-height: 44px; font-size: 1rem; }
+.recap-music .recap-music-count { margin: 10px 0 2px; font-size: .875rem; color: #51655a; }
+.recap-music > .primary small { display: block; font-weight: 400; font-size: .875rem; }

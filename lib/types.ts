@@ -1,3 +1,6 @@
+import type { StoredRecapCutJob } from './cloud-recap-cuts';
+import type { RecapCut } from "./recap-cut";
+
 export interface Account { id: string; name: string; createdAt: string }
 export interface Trip { id: string; accountId: string; title: string; startDate: string | null; endDate: string | null; notes: string; createdAt: string; updatedAt: string; coverPhotoId?: string | null; highlightPhotoIds?: string[]; highlightAnalyzedCount?: number; estimatedRoute?: EstimatedRoute | null }
 export interface EstimatedRoute { provider: 'OSRM'; generatedAt: string; segments: { fromPhotoId:string; toPhotoId:string; coordinates:[number, number][] }[]; distanceMeters: number; durationSeconds: number; waypointPhotoIds: string[] }
@@ -6,6 +9,8 @@ export interface Photo {
   capturedAt: string | null; latitude: number | null; longitude: number | null; placeName: string; country: string; notes: string;
   locationSource: 'exif' | 'photos' | 'user' | 'unknown'; confirmed: boolean; originalPath: string; thumbnailPath: string;
   favorite?: boolean; deletedAt?: string | null;
+  /** Derived in the private workspace response; not persisted. */
+  recapVisualDescription?: string;
   storageMode?: 'optimized' | 'original';
   timeSource?: 'exif' | 'photos' | 'user' | 'unknown';
   timeMetadata?: { capturedAt: string | null; timezoneKnown: boolean; offsetMinutes: number | null; source: 'DateTimeOriginal' | 'CreateDate' | 'GPSDateTime' | 'unknown'; localDateTime: string | null };
@@ -15,6 +20,7 @@ export interface Photo {
 export interface Recap {
   id: string; accountId: string; title: string; summary: string; highlights: string[]; photoIds: string[];
   tripIds: string[]; startDate: string | null; endDate: string | null; place: string;
+  cut?: RecapCut | null;
   theme: 'mixed' | 'data' | 'story'; createdAt: string; updatedAt: string;
 }
 export interface AiSuggestion {
@@ -36,8 +42,10 @@ export interface Store {
   accounts: Account[]; trips: Trip[]; photos: Photo[]; recaps: Recap[]; jobs: AiJob[];
   locationJobs?:StoredLocationJob[];
   highlightJobs?:StoredHighlightJob[];
+  recapCutJobs?:StoredRecapCutJob[];
   routeRequests?: { tripId:string; sourceKey:string; startedAt:number; status:'running'|'done'|'failed' }[];
   routeLastRequestAt?:number;
+  pendingMediaDeletes?:string[];
 }
 
 export interface LocationSuggestion {
@@ -55,7 +63,7 @@ export interface StoredLocationJob extends LocationJob {
 
 export interface HighlightJob {
   id:string;tripId:string;status:'running'|'succeeded'|'failed';
-  analyzedCount:number;totalCount:number;failedBatches:number;
+  analyzedCount:number;totalCount:number;failedBatches:number;elapsedMs?:number;
 }
 export interface HighlightBatch {
   photoIds:string[];status:'queued'|'running'|'succeeded'|'failed';
@@ -63,4 +71,5 @@ export interface HighlightBatch {
 }
 export interface StoredHighlightJob extends HighlightJob {
   sourceKey:string;createdAt:number;model:string;batches:HighlightBatch[];superseded?:boolean;
+  sourceCutoff?:number; pipeline?:string; finishedAt?:number;
 }

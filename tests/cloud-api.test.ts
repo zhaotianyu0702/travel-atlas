@@ -9,7 +9,7 @@ test('cloud storage handles concurrency, ownership, batch edits, trash and downl
   const entry = `import { routeApi } from ${JSON.stringify(resolve('lib/cloud-api.ts'))};
 import { mutateStore } from ${JSON.stringify(resolve('lib/cloud-store.ts'))};
 import { exportRoute } from ${JSON.stringify(resolve('lib/cloud-export.ts'))};
-export default {async fetch(req) {try {const url=new URL(req.url);if(url.pathname==='/seed-other'){await mutateStore(s=>{s.photos.push({...s.photos[0],id:'other',accountId:'other'});});return Response.json({ok:true});}const parts=url.pathname.split('/').filter(Boolean);return await (parts[0]==='export'?exportRoute(req,parts):routeApi(req,parts));} catch(e) {return Response.json({error:e.message},{status:400});}}};`;
+export default {async fetch(req) {try {const url=new URL(req.url);if(url.pathname==='/seed-evidence'){await mutateStore(s=>{const p=s.photos[0];s.recapCutJobs=[{id:'e',accountId:p.accountId,tripId:p.tripId,model:'fixture',source:'{}',photoIds:[p.id],requiredPhotoIds:[],status:'succeeded',error:null,cuts:null,createdAt:1,batches:[{photoIds:[p.id],status:'succeeded',observations:[{photoId:p.id,description:'Private visual fixture'}],imageKeys:{[p.id]:JSON.stringify(['recap-observation-v1','fixture',p.id,p.sha256,p.thumbnailPath])}}],synthesis:{photoIds:[],status:'succeeded'}}];});return Response.json({ok:true});}if(url.pathname==='/seed-other'){await mutateStore(s=>{s.photos.push({...s.photos[0],id:'other',accountId:'other'});});return Response.json({ok:true});}const parts=url.pathname.split('/').filter(Boolean);return await (parts[0]==='export'?exportRoute(req,parts):routeApi(req,parts));} catch(e) {return Response.json({error:e.message},{status:400});}}};`;
   const built=await build({stdin:{contents:entry,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm',platform:'browser',conditions:['workerd','worker','browser'],external:['cloudflare:workers']});
   const mf=new Miniflare({modules:[{type:'ESModule',path:'worker.mjs',contents:built.outputFiles[0].text}],compatibilityDate:'2026-05-15',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],r2Buckets:['BUCKET']});
   try {
@@ -25,8 +25,8 @@ export default {async fetch(req) {try {const url=new URL(req.url);if(url.pathnam
     assert.deepEqual((await Promise.all(retried.map(decode))).map(trip=>trip.id),[creationId,creationId]);
     ws=await decode(await request('workspace'));assert.equal(ws.trips.filter((trip:any)=>trip.id===creationId).length,1);
     const tripId=creationId;
-    // Structurally valid small PNG headers are enough for our signature and dimension validation.
-    const png=Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,2,0,0,0]);
+    // A real one-pixel PNG also exercises portable image export validation.
+    const png = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=', 'base64'));
     // JPEG APP1 EXIF with DateTimeOriginal = 2020:01:02 03:04:05.
     const tiff=new Uint8Array(64), tv=new DataView(tiff.buffer);
     tiff.set([0x49,0x49,42,0,8,0,0,0]);tv.setUint16(8,1,true);tv.setUint16(10,0x8769,true);tv.setUint16(12,4,true);tv.setUint32(14,1,true);tv.setUint32(18,26,true);
@@ -39,6 +39,9 @@ export default {async fetch(req) {try {const url=new URL(req.url);if(url.pathnam
     assert.equal(importedTrip.startDate.slice(0,10),'2020-01-02');
     assert.equal(importedTrip.endDate.slice(0,10),'2020-01-02');
     const id=uploaded.imported[0].id;assert.equal('originalPath' in uploaded.imported[0],false);
+    await decode(await request('seed-evidence','POST'));
+    ws=await decode(await request('workspace'));assert.equal(ws.photos.find((p:any)=>p.id===id).recapVisualDescription,'Private visual fixture');
+    assert.equal('thumbnailPath' in ws.photos.find((p:any)=>p.id===id),false);
     const download=await request(`media/${id}?variant=original&download=1`);assert.equal(download.status,200);assert.match(download.headers.get('content-disposition')||'',/attachment;.*filename\*=UTF-8''%E4%BD%A0/);assert.equal(download.headers.get('cache-control'),'private, no-store');
     await decode(await request('seed-other','POST'));assert.equal((await request('media/other?variant=original')).status,400);
     const invalid=await request('photos/batch','POST',{photoIds:[id,'other'],patch:{favorite:true}});assert.equal(invalid.status,400);
@@ -48,12 +51,18 @@ export default {async fetch(req) {try {const url=new URL(req.url);if(url.pathnam
     const html=await request(`export/${recap.id}?format=html`);
     assert.equal(html.status,200);assert.match(html.headers.get('content-disposition')||'',/^attachment;/);
     const document=await html.text();
-    assert.match(document,/Only published text/);assert.match(document,/src="data:image\/png;base64,/);
-    assert.doesNotMatch(document,/Somewhere|2020-01-02|\/api\/media/);
+    assert.match(document,/Only published text/);assert.match(document,/data:image\/png;base64,/);
+    assert.match(document,/Somewhere/);
+    assert.doesNotMatch(document,/2020-01-02T|你好|\/api\/media|Private visual fixture/);
     const scene=await decode(await request(`export/${recap.id}?format=scene`));
-    assert.deepEqual(Object.keys(scene.photos[0]).sort(),['id','src']);
+    assert.deepEqual(Object.keys(scene.photos[0]).sort(),['date','height','id','label','point','src','width']);
     const preview=await request(`export/${recap.id}?format=html&preview=1`);
     assert.equal(preview.headers.get('content-disposition'),null);
+    const snapshot=html.headers.get('x-atlas-snapshot');
+    await decode(await request(`recaps/${recap.id}`,'PATCH',{title:recap.title}));
+    assert.equal((await request(`export/${recap.id}?format=scene`)).headers.get('x-atlas-snapshot'),snapshot);
+    await decode(await request(`photos/${id}`,'PATCH',{placeName:'Somewhere else'}));
+    assert.notEqual((await request(`export/${recap.id}?format=scene`)).headers.get('x-atlas-snapshot'),snapshot);
 
     // Optimized data has no EXIF: source identity and capture metadata travel separately.
     const source={sha256:'a'.repeat(64),mode:'optimized',time:{capturedAt:'2020-01-01T18:04:05.000Z',timezoneKnown:true,offsetMinutes:540,source:'DateTimeOriginal',localDateTime:'2020-01-02T03:04:05'},latitude:35.5,longitude:139.5};

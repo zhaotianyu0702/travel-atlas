@@ -427,7 +427,7 @@ export default function AtlasMap({ photos, onSelectPhoto, focusTripId, focusVers
         <path d={streetOpacity ? streetRoutePath(route) : routePath(route) ?? ''} opacity={morph === 0 || morph === 1 ? 1 : .5 + .5 * Math.abs(2 * morph - 1)} />
         {roadRoute.features.length > 0 && <path className="atlas-estimated-route" d={streetOpacity ? streetRoutePath(roadRoute) : routePath(roadRoute) ?? ''}/>}
       </g>}
-      {tripMarkers?.filter(marker => Number.isFinite(marker.latitude) && Number.isFinite(marker.longitude) && Math.abs(marker.latitude) <= 90 && Math.abs(marker.longitude) <= 180).map(marker => {
+      {tripMarkers?.filter(marker => Number.isFinite(marker.latitude) && Number.isFinite(marker.longitude) && Math.abs(marker.latitude) <= 90 && Math.abs(marker.longitude) <= 180).map((marker, index) => {
         const point: Coordinate = [marker.longitude, marker.latitude];
         const back = geoDistance(camera.location, point) > Math.PI / 2 - .015;
         const opacity = back ? clipFade : 1;
@@ -437,6 +437,11 @@ export default function AtlasMap({ photos, onSelectPhoto, focusTripId, focusVers
           onClick={() => { if (!suppressClick.current && opacity >= .5) onSelectTrip?.(marker.id); }}
           onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && opacity >= .5) { event.preventDefault(); onSelectTrip?.(marker.id); } }}>
           <circle className="atlas-trip-marker-halo" r="22"/><circle className="atlas-trip-marker" r="16" fill={marker.color}/><circle className="atlas-trip-marker-dot" r="4"/>
+          {marker.coverUrl && <g className="atlas-trip-cover" aria-hidden="true">
+            <clipPath id={`${key}-trip-${index}`}><circle r="16"/></clipPath>
+            <image href={marker.coverUrl} x="-16" y="-16" width="32" height="32" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${key}-trip-${index})`}/>
+            <circle className="atlas-trip-cover-rim" r="16"/>
+          </g>}
         </g>;
       })}
       {clusters.map(cluster => {
